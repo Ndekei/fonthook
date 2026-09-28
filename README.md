@@ -17,6 +17,18 @@ Formerly *Scribefont*: saved projects and in-browser autosaves from before the r
 
 Work autosaves to the browser's localStorage. Use *Save project* for a portable backup.
 
+## Site structure
+
+- `#/` is the landing page. Its story copy lives at the top of `src/Landing.tsx` so it's easy to edit.
+- `#/studio/template`, `#/studio/scan`, `#/studio/glyphs` and `#/studio/export` are the tool.
+- Light mode is the default, and the moon/sun button switches to dark. The choice is remembered.
+
+## Ndekei Sans
+
+The landing page headline accent, type tester, story quote, signature and brand mark use **Ndekei Sans**. Put the
+font in `public/fonts/` as `NdekeiSans.woff2`, `.woff`, `.ttf` or `.otf` (any one is enough). Until it's there, those
+spots fall back to a system handwriting font.
+
 ## Development
 
 ```sh

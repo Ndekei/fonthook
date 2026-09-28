@@ -1,31 +1,30 @@
 import { useState } from 'react'
-import type { SetProject } from '../App'
+import type { SetProject, StepId } from '../App'
 import { CHARSETS } from '../lib/charsets'
 import { downloadBytes, type Project } from '../lib/project'
 import { PAPER, pageCount, templateSvg, type PaperSize } from '../lib/template'
+import Icon from './Icon'
+import { Group, Segmented, Switch } from './ui'
 
 interface Props {
   project: Project
   setProject: SetProject
   chars: string[]
-  next: () => void
+  go: (s: StepId) => void
 }
 
-export default function TemplateStep({ project, setProject, chars, next }: Props) {
+export default function TemplateStep({ project, setProject, chars, go }: Props) {
   const { paper, charsets, settings } = project
   const pages = pageCount(chars, paper)
   const [preview, setPreview] = useState(0)
   const page = Math.min(preview, pages - 1)
 
-  const toggle = (id: string) =>
-    setProject((p) => ({
-      ...p,
-      charsets: p.charsets.includes(id) ? p.charsets.filter((c) => c !== id) : [...p.charsets, id],
-    }))
+  const toggle = (id: string, on: boolean) =>
+    setProject((p) => ({ ...p, charsets: on ? [...p.charsets, id] : p.charsets.filter((c) => c !== id) }))
 
   const print = () => {
     const w = window.open('', '_blank')
-    if (!w) return alert('Allow pop-ups to print the template.')
+    if (!w) return alert('Allow pop-ups for this site to print the template.')
     const { w: pw, h: ph } = PAPER[paper]
     const svgs = Array.from({ length: pages }, (_, i) => `<div class="page">${templateSvg(chars, paper, i, settings.family)}</div>`)
     w.document.write(`<!doctype html><html><head><title>${settings.family} template</title><style>
@@ -38,75 +37,86 @@ export default function TemplateStep({ project, setProject, chars, next }: Props
   }
 
   const downloadSvg = () => {
-    for (let i = 0; i < pages; i++)
-      downloadBytes(templateSvg(chars, paper, i, settings.family), `template-page-${i + 1}.svg`, 'image/svg+xml')
+    for (let i = 0; i < pages; i++) downloadBytes(templateSvg(chars, paper, i, settings.family), `template-page-${i + 1}.svg`, 'image/svg+xml')
   }
 
   return (
-    <section className="step two-col">
-      <div className="panel">
-        <h2>Set up your font</h2>
-        <label className="field">
-          <span>Font name</span>
-          <input
-            value={settings.family}
-            maxLength={48}
-            onChange={(e) => setProject((p) => ({ ...p, settings: { ...p.settings, family: e.target.value } }))}
-          />
-        </label>
-        <label className="field">
-          <span>Paper</span>
-          <select value={paper} onChange={(e) => setProject((p) => ({ ...p, paper: e.target.value as PaperSize }))}>
-            {Object.entries(PAPER).map(([k, v]) => (
-              <option key={k} value={k}>
-                {v.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <fieldset className="field">
-          <span>Characters</span>
+    <div className="page-grid">
+      <div className="page-col">
+        <header className="page-head">
+          <h1>Print your template</h1>
+          <p>Choose the characters you want, print the sheet, then write one character in each box.</p>
+        </header>
+
+        <Group title="Font">
+          <label className="row-item field-row">
+            <span>Name</span>
+            <input
+              type="text"
+              value={settings.family}
+              maxLength={48}
+              placeholder="My Handwriting"
+              onChange={(e) => setProject((p) => ({ ...p, settings: { ...p.settings, family: e.target.value } }))}
+            />
+          </label>
+          <div className="row-item">
+            <span>Paper</span>
+            <Segmented
+              label="Paper size"
+              size="sm"
+              value={paper}
+              onChange={(v: PaperSize) => setProject((p) => ({ ...p, paper: v }))}
+              options={Object.entries(PAPER).map(([k, v]) => ({ value: k as PaperSize, label: v.label }))}
+            />
+          </div>
+        </Group>
+
+        <Group title="Characters" footer={`${chars.length} characters · ${pages} page${pages > 1 ? 's' : ''}`}>
           {CHARSETS.map((c) => (
-            <label key={c.id} className="check">
-              <input type="checkbox" checked={charsets.includes(c.id)} onChange={() => toggle(c.id)} />
-              {c.label} <small>({c.chars.length})</small>
-            </label>
+            <Switch key={c.id} label={c.label} detail={c.chars.slice(0, 12).join(' ') + (c.chars.length > 12 ? ' …' : '')} checked={charsets.includes(c.id)} onChange={(on) => toggle(c.id, on)} />
           ))}
-        </fieldset>
-        <p className="muted">
-          {chars.length} characters on {pages} page{pages > 1 ? 's' : ''}.
-        </p>
-        <div className="actions">
-          <button className="primary" onClick={print} disabled={!chars.length}>
-            Print template
+        </Group>
+
+        <div className="button-row">
+          <button className="btn filled large" onClick={print} disabled={!chars.length}>
+            <Icon name="print" /> Print template
           </button>
-          <button onClick={downloadSvg} disabled={!chars.length}>
-            Download SVG
+          <button className="btn tinted large" onClick={downloadSvg} disabled={!chars.length}>
+            <Icon name="download" /> Download SVG
           </button>
         </div>
-        <ol className="howto">
-          <li>Print at 100% scale (no "fit to page" needed, but it's fine if it's on).</li>
-          <li>Fill each box with a dark felt-tip or gel pen. Sit letters on the solid line; tails go below it.</li>
-          <li>Scan it or take a flat, well-lit photo with all four black squares in view.</li>
-        </ol>
-        <p className="muted">
-          No printer? Skip to <button className="link" onClick={next}>Scan</button> or draw each letter by hand in the Glyphs step.
-        </p>
+
+        <Group title="Tips">
+          <ol className="tips">
+            <li>Print at 100% scale. The corner squares let the scanner correct any scaling.</li>
+            <li>Use a dark felt-tip or gel pen. Sit letters on the solid line and let tails drop below it.</li>
+            <li>Photograph the page flat and evenly lit, with all four black squares in view.</li>
+          </ol>
+        </Group>
+
+        <button className="btn plain" onClick={() => go('glyphs')}>
+          No printer? Draw on screen instead <Icon name="arrow" size={16} />
+        </button>
       </div>
-      <div className="panel preview-panel">
-        <div className="pager">
-          <button disabled={page === 0} onClick={() => setPreview(page - 1)}>
-            ‹
-          </button>
-          <span>
-            Page {page + 1} / {pages}
-          </span>
-          <button disabled={page >= pages - 1} onClick={() => setPreview(page + 1)}>
-            ›
-          </button>
+
+      <div className="page-col sticky">
+        <div className="sheet-stage">
+          <div className="sheet" dangerouslySetInnerHTML={{ __html: templateSvg(chars, paper, page, settings.family) }} />
         </div>
-        <div className="sheet" dangerouslySetInnerHTML={{ __html: templateSvg(chars, paper, page, settings.family) }} />
+        {pages > 1 && (
+          <div className="pager">
+            <button className="icon-btn" disabled={page === 0} onClick={() => setPreview(page - 1)} aria-label="Previous page">
+              <Icon name="left" />
+            </button>
+            <span>
+              Page {page + 1} of {pages}
+            </span>
+            <button className="icon-btn" disabled={page >= pages - 1} onClick={() => setPreview(page + 1)} aria-label="Next page">
+              <Icon name="right" />
+            </button>
+          </div>
+        )}
       </div>
-    </section>
+    </div>
   )
 }

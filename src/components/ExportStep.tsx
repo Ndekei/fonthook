@@ -1,25 +1,29 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { SetProject } from '../App'
+import type { SetProject, StepId } from '../App'
 import { buildAll, type FontSettings } from '../lib/glyphs'
 import { buildOTF } from '../lib/otf'
 import { deserialize, downloadBytes, emptyProject, serialize, type Project } from '../lib/project'
 import { buildTTF, psName } from '../lib/ttf'
 import { sfntToWoff } from '../lib/woff'
+import Icon from './Icon'
+import { Group, Segmented, SliderRow, useToast } from './ui'
 
 interface Props {
   project: Project
   setProject: SetProject
   chars: string[]
+  go: (s: StepId) => void
 }
 
 const SAMPLE = 'The quick brown fox jumps over the lazy dog.\nSphinx of black quartz, judge my vow!\n0123456789 — Hello, world?'
 
 let previewSeq = 0
 
-export default function ExportStep({ project, setProject, chars }: Props) {
+export default function ExportStep({ project, setProject, chars, go }: Props) {
+  const toast = useToast()
   const { settings } = project
   const [text, setText] = useState(SAMPLE)
-  const [size, setSize] = useState(48)
+  const [size, setSize] = useState<'s' | 'm' | 'l'>('m')
   const [previewFamily, setPreviewFamily] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const loaded = useRef<FontFace | null>(null)
@@ -27,7 +31,7 @@ export default function ExportStep({ project, setProject, chars }: Props) {
   const built = useMemo(() => buildAll(project.glyphs, settings), [project.glyphs, settings])
   const missing = chars.filter((c) => !project.glyphs[c])
 
-  // Build a real TTF and load it via the FontFace API, so the preview is exactly what you'll download.
+  // Build a real TTF and load it with the FontFace API, so the preview is exactly what you'll download.
   useEffect(() => {
     if (!built.length) return
     const t = window.setTimeout(async () => {
@@ -56,6 +60,7 @@ export default function ExportStep({ project, setProject, chars }: Props) {
       if (kind === 'otf') downloadBytes(buildOTF(built, settings), `${base}.otf`, 'font/otf')
       else if (kind === 'ttf') downloadBytes(buildTTF(built, settings), `${base}.ttf`, 'font/ttf')
       else downloadBytes(sfntToWoff(buildTTF(built, settings)), `${base}.woff`, 'font/woff')
+      toast(`${base}.${kind} downloaded`, 'download')
     } catch (e) {
       alert(`Export failed: ${(e as Error).message}`)
     }
@@ -66,106 +71,143 @@ export default function ExportStep({ project, setProject, chars }: Props) {
     try {
       const p = deserialize(await f.text())
       setProject(() => p)
+      toast('Project opened', 'folder')
     } catch (e) {
       alert(`Couldn't open project: ${(e as Error).message}`)
     }
   }
 
   const reset = () => {
-    if (confirm('Delete every glyph and start a new font? Save the project first if you may want it back.')) setProject(() => emptyProject())
+    if (confirm('Start a new font? Every glyph in this one will be deleted. Save the project first if you might want it back.')) setProject(() => emptyProject())
   }
 
-  return (
-    <section className="step two-col wide-right">
-      <div className="panel">
-        <h2>Font settings</h2>
-        <label className="field">
-          <span>Font name</span>
-          <input value={settings.family} maxLength={48} onChange={(e) => set('family', e.target.value)} />
-        </label>
-        <label className="field">
-          <span>Style name</span>
-          <input value={settings.style} maxLength={32} onChange={(e) => set('style', e.target.value)} />
-        </label>
-        <Slider label="Stroke weight" value={settings.weight} min={-3} max={4} step={1} onChange={(v) => set('weight', v)} fmt={(v) => (v > 0 ? `+${v}` : `${v}`)} />
-        <Slider label="Smoothing" value={settings.smooth} min={0} max={8} step={1} onChange={(v) => set('smooth', v)} />
-        <Slider label="Outline detail" value={settings.tolerance} min={0.3} max={2.5} step={0.1} onChange={(v) => set('tolerance', v)} fmt={(v) => (v <= 0.6 ? 'fine' : v >= 1.6 ? 'simple' : 'balanced')} />
-        <Slider label="Letter spacing" value={settings.tracking} min={-120} max={200} step={5} onChange={(v) => set('tracking', v)} />
-        <Slider label="Word spacing" value={settings.spaceWidth} min={100} max={800} step={10} onChange={(v) => set('spaceWidth', v)} />
+  const font = previewFamily ? `"${previewFamily}", ui-sans-serif` : undefined
+  const px = { s: 28, m: 44, l: 72 }[size]
 
-        <h2 className="spaced">Download</h2>
-        {!built.length ? (
-          <p className="muted">Add some glyphs first.</p>
-        ) : (
-          <>
-            <div className="actions">
-              <button className="primary" onClick={() => exportFont('ttf')}>
-                Download .ttf
-              </button>
-              <button onClick={() => exportFont('otf')}>.otf</button>
-              <button onClick={() => exportFont('woff')}>.woff (web)</button>
-            </div>
-            <p className="muted small">
-              {built.length} glyphs. TTF works everywhere: Windows, macOS, Linux, Word, Photoshop, Canva, Cricut. Double-click the file to install
-              it.
-              {missing.length > 0 && (
-                <>
-                  {' '}
-                  Still empty: <span className="missing">{missing.join(' ')}</span>
-                </>
-              )}
-            </p>
-          </>
-        )}
-
-        <h2 className="spaced">Project</h2>
-        <p className="muted small">Work autosaves in this browser. Save a project file to move it or keep a backup.</p>
-        <div className="actions">
-          <button onClick={() => downloadBytes(serialize(project), `${base}.fonte-generer.json`, 'application/json')}>Save project</button>
-          <label className="button">
-            Open project
-            <input type="file" accept=".json,application/json" hidden onChange={(e) => loadProject(e.target.files?.[0])} />
-          </label>
-          <button className="danger" onClick={reset}>
-            New font
+  if (!built.length)
+    return (
+      <div className="page-single">
+        <div className="empty-state large">
+          <Icon name="pen" size={36} />
+          <h2>Nothing to export yet</h2>
+          <p>Draw or scan a few characters first, and your font will show up here.</p>
+          <button className="btn filled large" onClick={() => go('glyphs')}>
+            Go to glyphs
           </button>
         </div>
       </div>
-      <div className="panel">
-        <div className="row between">
-          <h2>Preview</h2>
-          <label className="row small">
-            Size
-            <input type="range" min={16} max={120} value={size} onChange={(e) => setSize(+e.target.value)} />
-          </label>
+    )
+
+  return (
+    <div className="page-grid wide-right">
+      <div className="page-col">
+        <header className="page-head">
+          <h1>Export</h1>
+          <p>Fine-tune the font, then download it. Double-click the file to install it.</p>
+        </header>
+
+        <div className="card download-card">
+          <div className="font-file-icon" aria-hidden style={{ fontFamily: font }}>
+            Aa
+          </div>
+          <div className="download-meta">
+            <strong className="truncate">{settings.family || 'Untitled'}</strong>
+            <span className="muted small">
+              {built.length} characters
+              {missing.length > 0 && ` · ${missing.length} not drawn yet`}
+            </span>
+          </div>
+          <button className="btn filled large block" onClick={() => exportFont('ttf')}>
+            <Icon name="download" /> Download font (.ttf)
+          </button>
+          <div className="button-row center">
+            <button className="btn plain" onClick={() => exportFont('otf')}>
+              OpenType .otf
+            </button>
+            <button className="btn plain" onClick={() => exportFont('woff')}>
+              Web .woff
+            </button>
+          </div>
         </div>
-        {error && <p className="badge warn">Preview error: {error}</p>}
-        <textarea
-          className="preview-text"
-          value={text}
-          spellCheck={false}
-          onChange={(e) => setText(e.target.value)}
-          style={{ fontFamily: previewFamily ? `"${previewFamily}", monospace` : undefined, fontSize: size }}
-        />
-        <div className="waterfall">
-          {[14, 20, 28, 40].map((s) => (
-            <div key={s} style={{ fontFamily: previewFamily ? `"${previewFamily}"` : undefined, fontSize: s }}>
-              {text.split('\n')[0] || SAMPLE.split('\n')[0]}
+
+        <Group title="Name">
+          <label className="row-item field-row">
+            <span>Family</span>
+            <input type="text" value={settings.family} maxLength={48} onChange={(e) => set('family', e.target.value)} />
+          </label>
+          <label className="row-item field-row">
+            <span>Style</span>
+            <input type="text" value={settings.style} maxLength={32} onChange={(e) => set('style', e.target.value)} />
+          </label>
+        </Group>
+
+        <Group title="Adjust" footer="Changes apply to every character and show in the preview straight away.">
+          <SliderRow label="Weight" value={settings.weight} min={-3} max={4} onChange={(v) => set('weight', v)} format={(v) => (v === 0 ? 'Natural' : v > 0 ? `Bolder +${v}` : `Lighter ${v}`)} />
+          <SliderRow label="Smoothing" value={settings.smooth} min={0} max={8} onChange={(v) => set('smooth', v)} />
+          <SliderRow label="Detail" value={settings.tolerance} min={0.3} max={2.5} step={0.1} onChange={(v) => set('tolerance', v)} format={(v) => (v <= 0.6 ? 'Fine' : v >= 1.6 ? 'Simple' : 'Balanced')} />
+          <SliderRow label="Letter spacing" value={settings.tracking} min={-120} max={200} step={5} onChange={(v) => set('tracking', v)} />
+          <SliderRow label="Word spacing" value={settings.spaceWidth} min={100} max={800} step={10} onChange={(v) => set('spaceWidth', v)} />
+        </Group>
+
+        {missing.length > 0 && (
+          <Group title="Not drawn yet" footer="These characters will be left out of the font.">
+            <div className="missing-chars">
+              {missing.map((c) => (
+                <span key={c}>{c}</span>
+              ))}
             </div>
-          ))}
+          </Group>
+        )}
+
+        <Group title="Project" footer="Your work autosaves in this browser. Save a project file to back it up or move it to another device.">
+          <button className="row-item action-row" onClick={() => downloadBytes(serialize(project), `${base}.fonte-generer.json`, 'application/json')}>
+            <Icon name="download" /> Save project file
+          </button>
+          <label className="row-item action-row">
+            <Icon name="upload" /> Open project file
+            <input type="file" accept=".json,application/json" hidden onChange={(e) => loadProject(e.target.files?.[0])} />
+          </label>
+          <button className="row-item action-row destructive" onClick={reset}>
+            <Icon name="plus" /> Start a new font
+          </button>
+        </Group>
+      </div>
+
+      <div className="page-col sticky">
+        <div className="card preview-sheet">
+          <div className="preview-head">
+            <span className="eyebrow">Live preview</span>
+            <Segmented
+              label="Preview size"
+              size="sm"
+              value={size}
+              onChange={setSize}
+              options={[
+                { value: 's', label: 'S' },
+                { value: 'm', label: 'M' },
+                { value: 'l', label: 'L' },
+              ]}
+            />
+          </div>
+          {error && <p className="badge warning">Preview error: {error}</p>}
+          <textarea
+            className="preview-text"
+            value={text}
+            spellCheck={false}
+            aria-label="Preview text"
+            onChange={(e) => setText(e.target.value)}
+            style={{ fontFamily: font, fontSize: px }}
+          />
+          <div className="waterfall" aria-hidden>
+            {[14, 18, 24, 32].map((s) => (
+              <div key={s}>
+                <span className="size-tag">{s}</span>
+                <span style={{ fontFamily: font, fontSize: s }}>{text.split('\n')[0] || SAMPLE.split('\n')[0]}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
-    </section>
-  )
-}
-
-function Slider(props: { label: string; value: number; min: number; max: number; step: number; onChange: (v: number) => void; fmt?: (v: number) => string }) {
-  return (
-    <label className="field">
-      <span>
-        {props.label}: {props.fmt ? props.fmt(props.value) : props.value}
-      </span>
-      <input type="range" min={props.min} max={props.max} step={props.step} value={props.value} onChange={(e) => props.onChange(+e.target.value)} />
-    </label>
+    </div>
   )
 }

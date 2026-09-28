@@ -7,6 +7,8 @@ import type { Project } from '../lib/project'
 import { bitmapPath, flatten, paintInk, strokeHit, type Stroke } from '../lib/strokes'
 import { commandsToSvg, contourToCommands } from '../lib/trace'
 import GlyphOutline from './GlyphOutline'
+import Icon from './Icon'
+import { Group, Segmented, SliderRow, Switch } from './ui'
 
 interface Props {
   char: string
@@ -318,121 +320,113 @@ export default function GlyphEditor({ char, chars, project, setProject, onNaviga
   const wordGlyphs = Array.from(word).map((c) => (c === ' ' ? 'space' : get(c)))
 
   return (
-    <div className="modal-backdrop" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal editor">
-        <div className="row between">
-          <div className="row">
-            <button onClick={() => go(-1)} aria-label="Previous character" title="Previous (←)">
-              ‹
+    <div className="sheet-backdrop" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="sheet-panel editor" role="dialog" aria-modal="true" aria-label={`Draw ${char}`}>
+        <header className="sheet-head">
+          <div className="nav-cluster">
+            <button className="icon-btn" onClick={() => go(-1)} aria-label="Previous character" title="Previous (←)">
+              <Icon name="left" />
             </button>
-            <h2 className="editor-char">{char}</h2>
-            <button onClick={() => go(1)} aria-label="Next character" title="Next (→ or Enter)">
-              ›
+            <div className="editor-title">
+              <span className="editor-char">{char}</span>
+              <span className="muted small">
+                {idx + 1} of {chars.length}
+              </span>
+            </div>
+            <button className="icon-btn" onClick={() => go(1)} aria-label="Next character" title="Next (→ or Enter)">
+              <Icon name="right" />
             </button>
-            <button onClick={nextEmpty}>Next empty</button>
-            <span className="muted small">
-              {idx + 1} / {chars.length}
-            </span>
           </div>
-          <button className="primary" onClick={onClose}>
-            Done
-          </button>
-        </div>
+          <div className="button-row">
+            <button className="btn plain hide-sm" onClick={nextEmpty}>
+              Next empty
+            </button>
+            <button className="btn filled" onClick={onClose}>
+              Done
+            </button>
+          </div>
+        </header>
 
         <div className="editor-body">
-          <div
-            className="draw-area"
-            ref={area}
-            onPointerLeave={() => cursor.current && (cursor.current.style.opacity = '0')}
-          >
-            <canvas ref={bg} className="layer" />
-            <canvas
-              ref={ink}
-              className="layer ink"
-              onPointerDown={onDown}
-              onPointerMove={onMove}
-              onPointerUp={onUp}
-              onPointerCancel={onUp}
-              onContextMenu={(e) => e.preventDefault()}
-            />
-            <div ref={cursor} className={'brush-cursor ' + tool} />
+          <div className="canvas-col">
+            <div className="draw-area" ref={area} onPointerLeave={() => cursor.current && (cursor.current.style.opacity = '0')}>
+              <canvas ref={bg} className="layer" />
+              <canvas
+                ref={ink}
+                className="layer ink"
+                onPointerDown={onDown}
+                onPointerMove={onMove}
+                onPointerUp={onUp}
+                onPointerCancel={onUp}
+                onContextMenu={(e) => e.preventDefault()}
+                aria-label={`Drawing canvas for ${char}`}
+              />
+              <div ref={cursor} className={'brush-cursor ' + tool} />
+            </div>
+            <div className="canvas-toolbar">
+              <Segmented
+                label="Tool"
+                value={tool}
+                onChange={setTool}
+                options={[
+                  { value: 'pen', label: 'Pen', icon: 'pen', title: 'Pen' },
+                  { value: 'eraser', label: 'Erase', icon: 'eraser', title: 'Rub out ink' },
+                  { value: 'remove', label: 'Strokes', icon: 'scissors', title: 'Tap a stroke to delete it' },
+                ]}
+              />
+              <div className="button-row tight">
+                <button className="icon-btn" onClick={undo} disabled={!past.current.length} aria-label="Undo" title="Undo (Ctrl+Z)">
+                  <Icon name="undo" />
+                </button>
+                <button className="icon-btn" onClick={redo} disabled={!future.current.length} aria-label="Redo" title="Redo (Ctrl+Shift+Z)">
+                  <Icon name="redo" />
+                </button>
+                <button className="icon-btn danger" onClick={clear} disabled={!doc.base && !doc.strokes.length} aria-label="Clear" title="Clear (Delete)">
+                  <Icon name="trash" />
+                </button>
+              </div>
+            </div>
           </div>
 
           <div className="editor-side">
-            <div className="toolbar">
-              <button className={tool === 'pen' ? 'active' : ''} onClick={() => setTool('pen')}>
-                Pen
-              </button>
-              <button className={tool === 'eraser' ? 'active' : ''} onClick={() => setTool('eraser')}>
-                Eraser
-              </button>
-              <button className={tool === 'remove' ? 'active' : ''} onClick={() => setTool('remove')} title="Tap a stroke to delete it">
-                Delete stroke
-              </button>
+            <div className="preview-card">
+              <div className="outline-box">{built ? <GlyphOutline glyph={built} guides /> : <span className="muted small">Your {char} will appear here</span>}</div>
+              <Strip glyphs={wordGlyphs} spaceWidth={project.settings.spaceWidth} />
+              <input type="text" className="word-input" value={word} onChange={(e) => setWord(e.target.value)} aria-label="Preview text" placeholder="Type to preview" />
             </div>
-            <div className="toolbar">
-              <button onClick={undo} disabled={!past.current.length} title="Ctrl+Z">
-                Undo
-              </button>
-              <button onClick={redo} disabled={!future.current.length} title="Ctrl+Shift+Z">
-                Redo
-              </button>
-              <button onClick={clear} title="Delete">
-                Clear
-              </button>
-            </div>
-            <label className="field">
-              <span>Pen size: {brush.size}</span>
-              <input type="range" min={3} max={48} value={brush.size} onChange={(e) => setBrush({ size: +e.target.value })} />
-            </label>
-            <label className="field">
-              <span>Steadiness: {Math.round(brush.steadiness * 100)}%</span>
-              <input type="range" min={0} max={0.9} step={0.05} value={brush.steadiness} onChange={(e) => setBrush({ steadiness: +e.target.value })} />
-            </label>
-            <label className="field">
-              <span>Line variation: {Math.round(brush.thinning * 100)}%</span>
-              <input type="range" min={0} max={0.9} step={0.05} value={brush.thinning} onChange={(e) => setBrush({ thinning: +e.target.value })} />
-            </label>
-            <label className="check small">
-              <input type="checkbox" checked={brush.ghost} onChange={(e) => setBrush({ ghost: e.target.checked })} />
-              Show guide letter
-            </label>
-            <label className="check small">
-              <input type="checkbox" checked={brush.onion} onChange={(e) => setBrush({ onion: e.target.checked })} />
-              Show previous character{prevChar ? ` (${prevChar})` : ''}
-            </label>
+
+            <Group title="Pen">
+              <SliderRow label="Size" value={brush.size} min={3} max={48} onChange={(v) => setBrush({ size: v })} />
+              <SliderRow label="Steadiness" value={brush.steadiness} min={0} max={0.9} step={0.05} onChange={(v) => setBrush({ steadiness: v })} format={(v) => `${Math.round(v * 100)}%`} />
+              <SliderRow label="Line variation" value={brush.thinning} min={0} max={0.9} step={0.05} onChange={(v) => setBrush({ thinning: v })} format={(v) => `${Math.round(v * 100)}%`} />
+            </Group>
+
+            <Group title="Guides">
+              <Switch label="Guide letter" checked={brush.ghost} onChange={(v) => setBrush({ ghost: v })} />
+              <Switch label="Previous character" detail={prevChar ? `Shows ${prevChar} underneath` : undefined} checked={brush.onion} onChange={(v) => setBrush({ onion: v })} />
+            </Group>
 
             {current && (
-              <details className="spacing">
-                <summary>Spacing & position</summary>
-                <label className="field">
-                  <span>Left space: {current.lsb}</span>
-                  <input type="range" min={-150} max={300} step={5} value={current.lsb} onChange={(e) => setMetric('lsb', +e.target.value)} />
-                </label>
-                <label className="field">
-                  <span>Right space: {current.rsb}</span>
-                  <input type="range" min={-150} max={300} step={5} value={current.rsb} onChange={(e) => setMetric('rsb', +e.target.value)} />
-                </label>
-                <label className="field">
-                  <span>Raise / lower: {current.dy}</span>
-                  <input type="range" min={-300} max={300} step={5} value={current.dy} onChange={(e) => setMetric('dy', +e.target.value)} />
-                </label>
-              </details>
+              <Group title="Spacing">
+                <SliderRow label="Left" value={current.lsb} min={-150} max={300} step={5} onChange={(v) => setMetric('lsb', v)} />
+                <SliderRow label="Right" value={current.rsb} min={-150} max={300} step={5} onChange={(v) => setMetric('rsb', v)} />
+                <SliderRow label="Raise or lower" value={current.dy} min={-300} max={300} step={5} onChange={(v) => setMetric('dy', v)} />
+              </Group>
             )}
-
-            <div className="editor-previews">
-              <div className="outline-box">{built ? <GlyphOutline glyph={built} guides /> : <span className="muted small">Draw to create this character</span>}</div>
-              <input type="text" className="word-input" value={word} onChange={(e) => setWord(e.target.value)} aria-label="Preview text" />
-              <Strip glyphs={wordGlyphs} spaceWidth={project.settings.spaceWidth} />
-            </div>
           </div>
         </div>
 
-        <div className="filmstrip" ref={strip}>
+        <div className="filmstrip" ref={strip} aria-label="All characters">
           {chars.map((c) => {
             const g = get(c)
             return (
-              <button key={c} className={'film-cell' + (c === char ? ' current' : '') + (g ? '' : ' empty')} onClick={() => onNavigate(c)} title={c}>
+              <button
+                key={c}
+                className={'film-cell' + (c === char ? ' current' : '') + (g ? '' : ' empty')}
+                onClick={() => onNavigate(c)}
+                aria-label={c}
+                aria-current={c === char}
+              >
                 {g ? <GlyphOutline glyph={g} /> : <span>{c}</span>}
               </button>
             )

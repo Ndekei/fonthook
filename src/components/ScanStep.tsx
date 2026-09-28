@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { SetProject } from '../App'
+import type { SetProject, StepId } from '../App'
 import type { Bitmap } from '../lib/bitmap'
 import { newRecord } from '../lib/glyphs'
 import { applyH, type Pt } from '../lib/homography'
@@ -7,12 +7,14 @@ import type { Project } from '../lib/project'
 import { detectCorners, extractCells, loadImage, pageToImage, type GrayImage } from '../lib/scan'
 import { charsOnPage, pageCount, pageLayout, type PageLayout } from '../lib/template'
 import BitmapThumb from './BitmapThumb'
+import Icon from './Icon'
+import { SliderRow, useToast } from './ui'
 
 interface Props {
   project: Project
   setProject: SetProject
   chars: string[]
-  next: () => void
+  go: (s: StepId) => void
 }
 
 interface Scan {
@@ -30,17 +32,20 @@ interface Scan {
 
 let nextId = 1
 
-export default function ScanStep({ project, setProject, chars, next }: Props) {
+export default function ScanStep({ project, setProject, chars, go }: Props) {
+  const toast = useToast()
+  const [dragging, setDragging] = useState(false)
   const [scans, setScans] = useState<Scan[]>([])
   const [busy, setBusy] = useState(false)
   const layout = pageLayout(project.paper)
   const pages = pageCount(chars, project.paper)
 
-  const onFiles = async (files: FileList | null) => {
-    if (!files?.length) return
+  const onFiles = async (list: FileList | null) => {
+    const files = Array.from(list ?? []).filter((f) => f.type.startsWith('image/') || /\.(heic|heif)$/i.test(f.name))
+    if (!files.length) return
     setBusy(true)
     const added: Scan[] = []
-    for (const file of Array.from(files)) {
+    for (const file of files) {
       try {
         const { gray, url } = await loadImage(file)
         const found = detectCorners(gray, layout)
@@ -79,21 +84,33 @@ export default function ScanStep({ project, setProject, chars, next }: Props) {
       return { ...p, glyphs }
     })
     update(s.id, { imported: true })
+    toast(`Added ${Object.keys(s.extracted).length} characters to your font`)
   }
 
   return (
-    <section className="step">
-      <div className="panel">
-        <h2>Upload your filled-in template</h2>
-        <p className="muted">
-          Scans or phone photos (JPG/PNG/HEIC where the browser supports it). Keep the page flat and evenly lit with all four black corner
-          squares visible. Everything is processed on your device.
-        </p>
-        <label className="dropzone">
-          <input type="file" accept="image/*" multiple onChange={(e) => onFiles(e.target.files)} disabled={busy} />
-          {busy ? 'Processing…' : 'Choose images or drop them here'}
-        </label>
-      </div>
+    <div className="page-single">
+      <header className="page-head">
+        <h1>Scan your pages</h1>
+        <p>Upload a scan or a photo of each filled-in page. Pages are read on your device and never uploaded anywhere.</p>
+      </header>
+      <label
+        className={'dropzone' + (dragging ? ' over' : '') + (busy ? ' busy' : '')}
+        onDragEnter={(e) => (e.preventDefault(), setDragging(true))}
+        onDragOver={(e) => e.preventDefault()}
+        onDragLeave={() => setDragging(false)}
+        onDrop={(e) => {
+          e.preventDefault()
+          setDragging(false)
+          onFiles(e.dataTransfer.files)
+        }}
+      >
+        <input type="file" accept="image/*,.heic,.heif" multiple onChange={(e) => onFiles(e.target.files)} disabled={busy} />
+        <span className="dropzone-icon">
+          <Icon name={busy ? 'sparkle' : 'camera'} size={28} />
+        </span>
+        <strong>{busy ? 'Reading your pages…' : 'Drop photos here, or click to choose'}</strong>
+        <span className="muted">JPG, PNG or HEIC · several pages at once is fine</span>
+      </label>
       {scans.map((s) => (
         <ScanCard
           key={s.id}
@@ -110,13 +127,13 @@ export default function ScanStep({ project, setProject, chars, next }: Props) {
         />
       ))}
       {scans.some((s) => s.imported) && (
-        <div className="actions end">
-          <button className="primary" onClick={next}>
-            Review glyphs →
+        <div className="button-row end">
+          <button className="btn filled large" onClick={() => go('glyphs')}>
+            Review glyphs <Icon name="arrow" />
           </button>
         </div>
       )}
-    </section>
+    </div>
   )
 }
 
@@ -216,18 +233,21 @@ function ScanCard({ scan, layout, pages, chars, onCorners, onPage, onSensitivity
   const found = scan.extracted ? Object.keys(scan.extracted).length : 0
 
   return (
-    <div className="panel scan-card">
-      <div className="scan-head">
-        <strong>{scan.name}</strong>
+    <article className="card scan-card">
+      <header className="scan-head">
+        <Icon name="file" />
+        <strong className="truncate">{scan.name}</strong>
         {scan.detected ? (
-          <span className="badge ok">Corners found</span>
+          <span className="badge success">
+            <Icon name="check" size={14} /> Page found
+          </span>
         ) : (
-          <span className="badge warn">Couldn't find the corner squares — drag the dots onto them</span>
+          <span className="badge warning">Drag the four dots onto the black corner squares</span>
         )}
-        <button className="link" onClick={onRemove}>
-          Remove
+        <button className="icon-btn subtle push" onClick={onRemove} aria-label={`Remove ${scan.name}`}>
+          <Icon name="close" />
         </button>
-      </div>
+      </header>
       <div className="scan-body">
         <canvas
           ref={canvas}
@@ -236,32 +256,36 @@ function ScanCard({ scan, layout, pages, chars, onCorners, onPage, onSensitivity
           onPointerMove={onMove}
           onPointerUp={onUp}
           onPointerCancel={onUp}
+          aria-label="Photo with draggable corner markers"
         />
         <div className="scan-side">
-          <p className="muted small">
-            Dot 1 (green) goes on the top-left square, the one with the small square beside it. The red grid should sit on the boxes.
-          </p>
-          <label className="field">
-            <span>Template page</span>
-            <select value={scan.page} onChange={(e) => onPage(+e.target.value)}>
-              {Array.from({ length: pages }, (_, i) => (
-                <option key={i} value={i}>
-                  Page {i + 1}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
-            <span>Ink sensitivity: {Math.round(scan.sensitivity * 100)}%</span>
-            <input type="range" min={0.4} max={0.9} step={0.01} value={scan.sensitivity} onChange={(e) => onSensitivity(+e.target.value)} />
-          </label>
-          <div className="actions">
-            <button onClick={rotate}>Rotate corners</button>
-            <button onClick={onExtract}>{scan.extracted ? 'Re-extract' : 'Extract glyphs'}</button>
+          <p className="muted small">Dot 1 (green) marks the top-left square, the one with a small square beside it. The red grid should sit on the boxes.</p>
+          <div className="group-body">
+            <label className="row-item field-row">
+              <span>Template page</span>
+              <select value={scan.page} onChange={(e) => onPage(+e.target.value)}>
+                {Array.from({ length: pages }, (_, i) => (
+                  <option key={i} value={i}>
+                    Page {i + 1}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <SliderRow label="Ink sensitivity" value={scan.sensitivity} min={0.4} max={0.9} step={0.01} onChange={onSensitivity} format={(v) => `${Math.round(v * 100)}%`} />
+          </div>
+          <div className="button-row">
+            <button className="btn tinted" onClick={rotate}>
+              <Icon name="rotate" /> Rotate
+            </button>
+            <button className="btn tinted" onClick={onExtract}>
+              <Icon name="sparkle" /> {scan.extracted ? 'Re-read page' : 'Read page'}
+            </button>
           </div>
           {scan.extracted && (
             <>
-              <p className="muted small">{found} characters found on this page.</p>
+              <p className="muted small">
+                Found {found} of {chars.length} characters.
+              </p>
               <div className="mini-grid">
                 {chars.map((ch) => (
                   <div key={ch} className={'mini' + (scan.extracted![ch] ? '' : ' empty')} title={ch}>
@@ -269,13 +293,19 @@ function ScanCard({ scan, layout, pages, chars, onCorners, onPage, onSensitivity
                   </div>
                 ))}
               </div>
-              <button className="primary" onClick={onImport} disabled={!found || scan.imported}>
-                {scan.imported ? 'Added to font ✓' : `Add ${found} glyphs to font`}
+              <button className="btn filled block" onClick={onImport} disabled={!found || scan.imported}>
+                {scan.imported ? (
+                  <>
+                    <Icon name="check" /> Added to your font
+                  </>
+                ) : (
+                  `Add ${found} characters to font`
+                )}
               </button>
             </>
           )}
         </div>
       </div>
-    </div>
+    </article>
   )
 }
