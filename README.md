@@ -25,9 +25,8 @@ Work autosaves to the browser's localStorage. Use *Save project* for a portable 
 
 ## Ndekei Sans
 
-The landing page headline accent, type tester, story quote, signature and brand mark use **Ndekei Sans**. Put the
-font in `public/fonts/` as `NdekeiSans.woff2`, `.woff`, `.ttf` or `.otf` (any one is enough). Until it's there, those
-spots fall back to a system handwriting font.
+The landing page headline accent, type tester, story quote, signature and brand mark use **Ndekei Sans**
+(`public/fonts/NdekeiSans-Regular.ttf`). It covers basic ASCII only, so text set in it avoids accents and curly quotes.
 
 ## Development
 

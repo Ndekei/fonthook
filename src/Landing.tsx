@@ -7,7 +7,8 @@ import type { Theme } from './theme'
 // Copy lives here so it's easy to make it your own.
 // ---------------------------------------------------------------------------
 const STORY = {
-  quote: 'Everyone’s handwriting deserves to be a font.',
+  // Text shown in Ndekei Sans (quote, signature, tiles, marquee) sticks to plain ASCII: that's what the font covers.
+  quote: "Everyone's handwriting deserves to be a font.",
   paragraphs: [
     'Fonte Générer is my passion project. I’ve always loved the small quirks that make handwriting personal: the loop of a g, the lean of a t, the way a signature settles into a shape only you make.',
     'Turning that into a real, installable font shouldn’t be locked behind a paywall or an upload to someone’s server. So I built a tool that does it all in your browser, for free, and keeps your pages on your device.',
@@ -31,7 +32,7 @@ const FEATURES: { icon: IconName; title: string; body: string }[] = [
   { icon: 'heart', title: 'Free, for real', body: 'No trial, no watermark and no export fee. Make as many fonts as you like.' },
 ]
 
-const WORDS = ['hello', 'bonjour', 'jambo', 'hola', 'ciao', 'olá', 'hallo', 'merci', 'asante', 'grazie', 'danke', 'karibu']
+const WORDS = ['hello', 'bonjour', 'jambo', 'hola', 'ciao', 'hallo', 'merci', 'asante', 'grazie', 'danke', 'karibu']
 
 export default function Landing({ go, theme, setTheme }: { go: (p: string) => void; theme: Theme; setTheme: (t: Theme) => void }) {
   const [sample, setSample] = useState('Write something lovely')
@@ -138,7 +139,7 @@ export default function Landing({ go, theme, setTheme }: { go: (p: string) => vo
           </div>
 
           <div className="tiles" aria-hidden>
-            {['A', 'g', '&', 'é', 'k', '?'].map((c, i) => (
+            {['A', 'g', '&', 'R', 'k', '?'].map((c, i) => (
               <span key={c} className={`tile hand t${i}`}>
                 {c}
               </span>
@@ -204,7 +205,7 @@ export default function Landing({ go, theme, setTheme }: { go: (p: string) => vo
       <section className="land-section story" id="story">
         <div className="story-inner">
           <p className="eyebrow reveal">The story</p>
-          <blockquote className="story-quote hand reveal">“{STORY.quote}”</blockquote>
+          <blockquote className="story-quote hand reveal">"{STORY.quote}"</blockquote>
           <div className="story-body">
             {STORY.paragraphs.map((p, i) => (
               <p key={i} className="reveal">
@@ -212,7 +213,7 @@ export default function Landing({ go, theme, setTheme }: { go: (p: string) => vo
               </p>
             ))}
           </div>
-          <p className="signature hand reveal">— {STORY.signature}</p>
+          <p className="signature hand reveal">- {STORY.signature}</p>
         </div>
       </section>
 
@@ -239,7 +240,7 @@ export default function Landing({ go, theme, setTheme }: { go: (p: string) => vo
 
       <footer className="land-footer">
         <span>
-          <span className="hand">Fonte Générer</span> · a passion project by {STORY.signature}
+          <strong>Fonte Générer</strong> · a passion project by <span className="hand">{STORY.signature}</span>
         </span>
         <span className="muted">Made with care. Your pages never leave your device.</span>
       </footer>

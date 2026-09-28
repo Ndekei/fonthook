@@ -600,3 +600,9 @@ input[type='range']::-moz-range-thumb {
   .page-head.with-actions .button-row, .page-head.with-actions .btn { width: 100%; }
   .toolbar-bar { padding-top: 8px; padding-bottom: 8px; }
 }
+
+/* Ndekei Sans sits small on its body, so display uses are sized up to match the UI type. */
+.brand-mark { font-size: 25px; }
+.hero-hand { font-size: 1.22em; }
+.tile { font-size: 44px; }
+.marquee-track { font-size: 44px; }
