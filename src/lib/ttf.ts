@@ -261,7 +261,7 @@ export function buildTTF(built: BuiltGlyph[], s: FontSettings): Uint8Array {
   // name
   const ps = `${psName(family)}-${psName(style)}`
   const names: [number, string][] = [
-    [0, `Created with Scribefont by the font's author.`],
+    [0, `Created with Fonte Générer by the font's author.`],
     [1, family],
     [2, style],
     [3, `${ps};${new Date().toISOString().slice(0, 10)}`],

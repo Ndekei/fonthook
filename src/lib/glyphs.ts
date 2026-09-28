@@ -1,9 +1,14 @@
 import { inkBounds, morph, type Bitmap } from './bitmap'
 import { BASELINE_PX, SCALE } from './geometry'
+import type { Stroke } from './strokes'
 import { traceBitmap, type Contour } from './trace'
 
 export interface GlyphRecord {
+  /** Flattened ink the font is traced from. */
   bitmap: Bitmap
+  /** When drawn in the editor: the starting bitmap (e.g. a scan) and the strokes on top of it. */
+  base?: Bitmap
+  strokes?: Stroke[]
   /** Extra space left/right of the ink, in font units. */
   lsb: number
   rsb: number

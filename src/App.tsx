@@ -38,7 +38,7 @@ export default function App() {
           <span className="logo" aria-hidden>
             ✎
           </span>
-          Scribefont
+          Fonte Générer
         </div>
         <nav className="steps">
           {STEPS.map((s, i) => (

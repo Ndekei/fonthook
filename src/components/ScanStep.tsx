@@ -75,7 +75,7 @@ export default function ScanStep({ project, setProject, chars, next }: Props) {
     if (!s.extracted) return
     setProject((p) => {
       const glyphs = { ...p.glyphs }
-      for (const [ch, bm] of Object.entries(s.extracted!)) glyphs[ch] = { ...(glyphs[ch] ?? newRecord(bm)), bitmap: bm }
+      for (const [ch, bm] of Object.entries(s.extracted!)) glyphs[ch] = { ...(glyphs[ch] ?? newRecord(bm)), bitmap: bm, base: undefined, strokes: undefined }
       return { ...p, glyphs }
     })
     update(s.id, { imported: true })

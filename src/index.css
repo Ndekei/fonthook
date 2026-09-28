@@ -135,3 +135,23 @@ main { max-width: 1280px; margin: 0 auto; padding: 1.2rem; }
 .waterfall { margin-top: 0.8rem; display: flex; flex-direction: column; gap: 0.4rem; overflow: hidden; }
 .waterfall div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .missing { font-family: Georgia, serif; letter-spacing: 0.15em; }
+
+/* Drawing workspace */
+.modal.editor { width: min(1120px, 100%); }
+.editor-body { grid-template-columns: minmax(0, 560px) 1fr; }
+.draw-area { background: #fff; cursor: none; box-shadow: inset 0 0 0 1px var(--line); }
+.layer.ink { cursor: none; }
+.brush-cursor {
+  position: absolute; top: 0; left: 0; pointer-events: none; border-radius: 50%;
+  border: 1.5px solid rgba(59, 91, 219, 0.8); box-shadow: 0 0 0 1px rgba(255,255,255,0.8); opacity: 0;
+}
+.brush-cursor.eraser { border-color: rgba(194, 65, 12, 0.85); border-style: dashed; }
+.brush-cursor.remove { border-color: rgba(194, 65, 12, 0.85); }
+.spacing { margin: 0.6rem 0; }
+.spacing summary { cursor: pointer; color: var(--muted); font-size: 0.9rem; margin-bottom: 0.6rem; }
+.word-input { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 0.35rem 0.6rem; width: 100%; }
+.filmstrip { display: flex; gap: 6px; overflow-x: auto; margin-top: 1rem; padding: 4px 2px 8px; scroll-behavior: smooth; }
+.film-cell { flex: 0 0 52px; height: 52px; padding: 0; justify-content: center; color: var(--ink); }
+.film-cell.empty { border-style: dashed; color: var(--muted); font-size: 0.85rem; }
+.film-cell.current { border: 2px solid var(--accent); background: var(--accent-soft); }
+.check.small { font-size: 0.9rem; }

@@ -33,7 +33,7 @@ export default function ExportStep({ project, setProject, chars }: Props) {
     const t = window.setTimeout(async () => {
       try {
         const ttf = buildTTF(built, settings)
-        const family = `scribefont-preview-${++previewSeq}`
+        const family = `fonte-generer-preview-${++previewSeq}`
         const face = new FontFace(family, ttf.buffer as ArrayBuffer)
         await face.load()
         document.fonts.add(face)
@@ -121,7 +121,7 @@ export default function ExportStep({ project, setProject, chars }: Props) {
         <h2 className="spaced">Project</h2>
         <p className="muted small">Work autosaves in this browser. Save a project file to move it or keep a backup.</p>
         <div className="actions">
-          <button onClick={() => downloadBytes(serialize(project), `${base}.scribefont.json`, 'application/json')}>Save project</button>
+          <button onClick={() => downloadBytes(serialize(project), `${base}.fonte-generer.json`, 'application/json')}>Save project</button>
           <label className="button">
             Open project
             <input type="file" accept=".json,application/json" hidden onChange={(e) => loadProject(e.target.files?.[0])} />
