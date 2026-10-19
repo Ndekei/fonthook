@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { SetProject, StepId } from '../App'
-import { buildAll, type FontSettings } from '../lib/glyphs'
+import { buildAll, WEIGHT_MAX, WEIGHT_MIN, weightLabel, type FontSettings } from '../lib/glyphs'
 import { buildOTF } from '../lib/otf'
 import { deserialize, downloadBytes, emptyProject, serialize, type Project } from '../lib/project'
 import { buildTTF, psName } from '../lib/ttf'
 import { sfntToWoff } from '../lib/woff'
+import GlyphExplorer from './GlyphExplorer'
 import Icon from './Icon'
 import { Group, Segmented, SliderRow, useToast } from './ui'
 
@@ -99,115 +100,119 @@ export default function ExportStep({ project, setProject, chars, go }: Props) {
     )
 
   return (
-    <div className="page-grid wide-right">
-      <div className="page-col">
-        <header className="page-head">
-          <h1>Export</h1>
-          <p>Fine-tune the font, then download it. Double-click the file to install it.</p>
-        </header>
+    <>
+      <div className="page-grid wide-right">
+        <div className="page-col">
+          <header className="page-head">
+            <h1>Export</h1>
+            <p>Fine-tune the font, then download it. Double-click the file to install it.</p>
+          </header>
 
-        <div className="card download-card">
-          <div className="font-file-icon" aria-hidden style={{ fontFamily: font }}>
-            Aa
-          </div>
-          <div className="download-meta">
-            <strong className="truncate">{settings.family || 'Untitled'}</strong>
-            <span className="muted small">
-              {built.length} characters
-              {missing.length > 0 && ` · ${missing.length} not drawn yet`}
-            </span>
-          </div>
-          <button className="btn filled large block" onClick={() => exportFont('ttf')}>
-            <Icon name="download" /> Download font (.ttf)
-          </button>
-          <div className="button-row center">
-            <button className="btn plain" onClick={() => exportFont('otf')}>
-              OpenType .otf
+          <div className="card download-card">
+            <div className="font-file-icon" aria-hidden style={{ fontFamily: font }}>
+              Aa
+            </div>
+            <div className="download-meta">
+              <strong className="truncate">{settings.family || 'Untitled'}</strong>
+              <span className="muted small">
+                {built.length} characters
+                {missing.length > 0 && ` · ${missing.length} not drawn yet`}
+              </span>
+            </div>
+            <button className="btn filled large block" onClick={() => exportFont('ttf')}>
+              <Icon name="download" /> Download font (.ttf)
             </button>
-            <button className="btn plain" onClick={() => exportFont('woff')}>
-              Web .woff
-            </button>
+            <div className="button-row center">
+              <button className="btn plain" onClick={() => exportFont('otf')}>
+                OpenType .otf
+              </button>
+              <button className="btn plain" onClick={() => exportFont('woff')}>
+                Web .woff
+              </button>
+            </div>
           </div>
+
+          <Group title="Name">
+            <label className="row-item field-row">
+              <span>Family</span>
+              <input type="text" value={settings.family} maxLength={48} onChange={(e) => set('family', e.target.value)} />
+            </label>
+            <label className="row-item field-row">
+              <span>Style</span>
+              <input type="text" value={settings.style} maxLength={32} onChange={(e) => set('style', e.target.value)} />
+            </label>
+          </Group>
+
+          <Group title="Adjust" footer="Changes apply to every character and show in the preview straight away.">
+            <SliderRow label="Weight" value={settings.weight} min={WEIGHT_MIN} max={WEIGHT_MAX} onChange={(v) => set('weight', v)} format={weightLabel} />
+            <SliderRow label="Smoothing" value={settings.smooth} min={0} max={8} onChange={(v) => set('smooth', v)} />
+            <SliderRow label="Detail" value={settings.tolerance} min={0.3} max={2.5} step={0.1} onChange={(v) => set('tolerance', v)} format={(v) => (v <= 0.6 ? 'Fine' : v >= 1.6 ? 'Simple' : 'Balanced')} />
+            <SliderRow label="Letter spacing" value={settings.tracking} min={-120} max={200} step={5} onChange={(v) => set('tracking', v)} />
+            <SliderRow label="Word spacing" value={settings.spaceWidth} min={100} max={800} step={10} onChange={(v) => set('spaceWidth', v)} />
+          </Group>
+
+          {missing.length > 0 && (
+            <Group title="Not drawn yet" footer="These characters will be left out of the font.">
+              <div className="missing-chars">
+                {missing.map((c) => (
+                  <span key={c}>{c}</span>
+                ))}
+              </div>
+            </Group>
+          )}
+
+          <Group title="Project" footer="Your work autosaves in this browser. Save a project file to back it up or move it to another device.">
+            <button className="row-item action-row" onClick={() => downloadBytes(serialize(project), `${base}.fonte-generer.json`, 'application/json')}>
+              <Icon name="download" /> Save project file
+            </button>
+            <label className="row-item action-row">
+              <Icon name="upload" /> Open project file
+              <input type="file" accept=".json,application/json" hidden onChange={(e) => loadProject(e.target.files?.[0])} />
+            </label>
+            <button className="row-item action-row destructive" onClick={reset}>
+              <Icon name="plus" /> Start a new font
+            </button>
+          </Group>
         </div>
 
-        <Group title="Name">
-          <label className="row-item field-row">
-            <span>Family</span>
-            <input type="text" value={settings.family} maxLength={48} onChange={(e) => set('family', e.target.value)} />
-          </label>
-          <label className="row-item field-row">
-            <span>Style</span>
-            <input type="text" value={settings.style} maxLength={32} onChange={(e) => set('style', e.target.value)} />
-          </label>
-        </Group>
-
-        <Group title="Adjust" footer="Changes apply to every character and show in the preview straight away.">
-          <SliderRow label="Weight" value={settings.weight} min={-3} max={4} onChange={(v) => set('weight', v)} format={(v) => (v === 0 ? 'Natural' : v > 0 ? `Bolder +${v}` : `Lighter ${v}`)} />
-          <SliderRow label="Smoothing" value={settings.smooth} min={0} max={8} onChange={(v) => set('smooth', v)} />
-          <SliderRow label="Detail" value={settings.tolerance} min={0.3} max={2.5} step={0.1} onChange={(v) => set('tolerance', v)} format={(v) => (v <= 0.6 ? 'Fine' : v >= 1.6 ? 'Simple' : 'Balanced')} />
-          <SliderRow label="Letter spacing" value={settings.tracking} min={-120} max={200} step={5} onChange={(v) => set('tracking', v)} />
-          <SliderRow label="Word spacing" value={settings.spaceWidth} min={100} max={800} step={10} onChange={(v) => set('spaceWidth', v)} />
-        </Group>
-
-        {missing.length > 0 && (
-          <Group title="Not drawn yet" footer="These characters will be left out of the font.">
-            <div className="missing-chars">
-              {missing.map((c) => (
-                <span key={c}>{c}</span>
+        <div className="page-col sticky">
+          <div className="card preview-sheet">
+            <div className="preview-head">
+              <span className="eyebrow">Live preview</span>
+              <Segmented
+                label="Preview size"
+                size="sm"
+                value={size}
+                onChange={setSize}
+                options={[
+                  { value: 's', label: 'S' },
+                  { value: 'm', label: 'M' },
+                  { value: 'l', label: 'L' },
+                ]}
+              />
+            </div>
+            {error && <p className="badge warning">Preview error: {error}</p>}
+            <textarea
+              className="preview-text"
+              value={text}
+              spellCheck={false}
+              aria-label="Preview text"
+              onChange={(e) => setText(e.target.value)}
+              style={{ fontFamily: font, fontSize: px }}
+            />
+            <div className="waterfall" aria-hidden>
+              {[14, 18, 24, 32].map((s) => (
+                <div key={s}>
+                  <span className="size-tag">{s}</span>
+                  <span style={{ fontFamily: font, fontSize: s }}>{text.split('\n')[0] || SAMPLE.split('\n')[0]}</span>
+                </div>
               ))}
             </div>
-          </Group>
-        )}
-
-        <Group title="Project" footer="Your work autosaves in this browser. Save a project file to back it up or move it to another device.">
-          <button className="row-item action-row" onClick={() => downloadBytes(serialize(project), `${base}.fonte-generer.json`, 'application/json')}>
-            <Icon name="download" /> Save project file
-          </button>
-          <label className="row-item action-row">
-            <Icon name="upload" /> Open project file
-            <input type="file" accept=".json,application/json" hidden onChange={(e) => loadProject(e.target.files?.[0])} />
-          </label>
-          <button className="row-item action-row destructive" onClick={reset}>
-            <Icon name="plus" /> Start a new font
-          </button>
-        </Group>
-      </div>
-
-      <div className="page-col sticky">
-        <div className="card preview-sheet">
-          <div className="preview-head">
-            <span className="eyebrow">Live preview</span>
-            <Segmented
-              label="Preview size"
-              size="sm"
-              value={size}
-              onChange={setSize}
-              options={[
-                { value: 's', label: 'S' },
-                { value: 'm', label: 'M' },
-                { value: 'l', label: 'L' },
-              ]}
-            />
-          </div>
-          {error && <p className="badge warning">Preview error: {error}</p>}
-          <textarea
-            className="preview-text"
-            value={text}
-            spellCheck={false}
-            aria-label="Preview text"
-            onChange={(e) => setText(e.target.value)}
-            style={{ fontFamily: font, fontSize: px }}
-          />
-          <div className="waterfall" aria-hidden>
-            {[14, 18, 24, 32].map((s) => (
-              <div key={s}>
-                <span className="size-tag">{s}</span>
-                <span style={{ fontFamily: font, fontSize: s }}>{text.split('\n')[0] || SAMPLE.split('\n')[0]}</span>
-              </div>
-            ))}
           </div>
         </div>
       </div>
-    </div>
+
+      <GlyphExplorer chars={chars} built={built} fontFamily={font} weight={settings.weight} onWeight={(v) => set('weight', v)} onDraw={() => go('glyphs')} />
+    </>
   )
 }

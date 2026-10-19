@@ -398,6 +398,51 @@ input[type='range']::-moz-range-thumb {
 .waterfall div { display: flex; align-items: baseline; gap: 12px; white-space: nowrap; overflow: hidden; }
 .size-tag { flex: none; width: 22px; font-size: 11px; color: var(--label-3); font-variant-numeric: tabular-nums; }
 
+/* glyph explorer: overview grid + inspector, below the export layout */
+.glyph-explorer {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin-top: 40px;
+  --gx-height: 600px;
+}
+.gx-panel { display: flex; flex-direction: column; background: var(--fill); border-radius: var(--r-lg); box-shadow: var(--shadow-md); overflow: hidden; height: var(--gx-height); }
+.gx-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; padding: 16px 20px; border-bottom: 1px solid var(--separator); }
+.gx-head h2 { font-size: 17px; font-weight: 600; }
+.gx-weight { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--label-2); }
+.gx-weight input { width: 160px; }
+.gx-weight output { min-width: 72px; font-variant-numeric: tabular-nums; color: var(--label); }
+.gx-grid {
+  flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); grid-auto-rows: 72px;
+  gap: 4px; padding: 12px; align-content: start;
+}
+.gx-cell {
+  display: grid; place-items: center; border: none; border-radius: var(--r-md); background: none; color: var(--ink);
+  font-size: 28px; line-height: 1; cursor: pointer; transition: background 0.15s var(--ease), color 0.15s var(--ease);
+}
+.gx-cell:hover { background: var(--fill-3); }
+.gx-cell:focus-visible { outline: 3px solid var(--accent-tint); outline-offset: 0; }
+.gx-cell.on { background: var(--label); color: var(--bg-elevated); }
+.gx-cell.missing { color: var(--label-3); font-family: var(--font-ui); font-size: 20px; }
+.gx-cell.missing.on { background: var(--fill-4); color: var(--label); }
+
+/* The inspector is always dark, like a type foundry's specimen view. */
+.gx-inspector {
+  position: relative; display: flex; flex-direction: column; justify-content: space-between; gap: 12px; height: var(--gx-height);
+  padding: 18px 20px; border-radius: var(--r-lg); color: #ececec; overflow: hidden;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px) 0 0 / 24px 24px,
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px) 0 0 / 24px 24px,
+    #161618;
+}
+.gx-meta {
+  display: flex; justify-content: space-between; gap: 12px; font: 12px/1.4 ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  color: rgba(255, 255, 255, 0.45); font-variant-numeric: tabular-nums;
+}
+.gx-glyph { flex: 1; min-height: 0; width: 100%; fill: #ececec; }
+.gx-glyph path { transition: d 0.2s var(--ease); }
+.gx-lines line { stroke: rgba(255, 255, 255, 0.28); stroke-width: 3; stroke-dasharray: 10 10; vector-effect: non-scaling-stroke; }
+.gx-lines text { fill: rgba(255, 255, 255, 0.45); font: 34px ui-monospace, 'SF Mono', Menlo, Consolas, monospace; }
+.gx-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; text-align: center; color: rgba(255, 255, 255, 0.6); }
+.gx-empty-char { font-size: 140px; line-height: 1.2; color: rgba(255, 255, 255, 0.14); }
+
 /* toasts */
 .toasts { position: fixed; left: 50%; bottom: max(24px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 100; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
 .toast {
@@ -549,6 +594,7 @@ input[type='range']::-moz-range-thumb {
 /* ============================================================ responsive */
 @media (max-width: 960px) {
   .page-grid, .page-grid.wide-right { grid-template-columns: 1fr; }
+  .glyph-explorer { grid-template-columns: 1fr; --gx-height: 460px; }
   .page-col.sticky { position: static; }
   .editor-body { grid-template-columns: 1fr; }
   .scan-body { grid-template-columns: 1fr; }

@@ -38,6 +38,11 @@ export const DEFAULT_SETTINGS: FontSettings = {
   spaceWidth: 320,
 }
 
+/** Range of the weight setting, in bitmap pixels of thickening (+) or thinning (−). */
+export const WEIGHT_MIN = -3
+export const WEIGHT_MAX = 4
+export const weightLabel = (v: number) => (v === 0 ? 'Natural' : v > 0 ? `Bolder +${v}` : `Lighter ${v}`)
+
 export const newRecord = (bitmap: Bitmap): GlyphRecord => ({ bitmap, lsb: 30, rsb: 30, dy: 0 })
 
 /** A glyph in font units, y-up, contours in TrueType orientation (outer clockwise). */

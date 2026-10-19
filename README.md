@@ -13,7 +13,9 @@ Formerly *Scribefont*: saved projects and in-browser autosaves from before the r
    a faint guide letter, the previous character shown faintly underneath for consistency, a live word preview, a
    filmstrip to jump between characters, and palm rejection when a stylus is in use.
 4. **Preview & export**: type in the live preview, which uses the actual generated font, tune weight, smoothing,
-   and spacing, then download **.ttf**, **.otf**, or **.woff**.
+   and spacing, then download **.ttf**, **.otf**, or **.woff**. The glyph set overview shows every character in the
+   generated font with a weight slider, and an inspector draws the selected glyph large against its cap height,
+   x-height, baseline and descender. Arrow keys move through the grid.
 
 Work autosaves to the browser's localStorage. Use *Save project* for a portable backup.
 
